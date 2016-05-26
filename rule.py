@@ -20,6 +20,10 @@ class CodingRule:
         self.firing_str = 0
 
     def _sanitize_weights(self):
+        if self.weights.sum() == 0:
+            # allow for empty rules
+            return
+        
         for i in range(self.weights.shape[0]):
             if self.weights[i,:].sum() == 0:
                 self.weights[i,:] = True
@@ -42,12 +46,30 @@ class CodingRule:
         mf_vals = np.zeros(self.weights.shape)+np.nan
         for i in range(self.num_inputs):
             x = input[i]
+            # given input, evalate membership degree in each partition
             for j in range(len(self.mfs)):
                 if self.weights[i,j]:
-                    mf_vals[i,j] = self.mfs[j].value(x)            
-        op_or = np.nansum(mf_vals,axis=1)
+                    mf_vals[i,j] = self.mfs[j].value(x)
+        
+        # a rule may not cover all dimensions, i.e.:
+        # "IF x1 is low THEN ..." does not cover x0
+        # coverage == 1   -> rule covers this dimension
+        # coverage == nan -> rule does not cover this dimension
+        coverage = 1.0 - np.isnan(mf_vals).prod(axis=1)
+        coverage[coverage==0] = np.nan
+        
+        # this coeff reflects % of dimensions covered by the rule
+        coverage_coeff = float(sum(coverage==1)) / coverage.shape[0]
+        
+        # by multiplying by coverage we exclude 0's
+        # that result from np.nansum([nan, nan, nan, ...])
+        # that are in uncovred dimensions
+        # thus uncovered dimensions are excluded from product
+        op_or = np.nansum(mf_vals,axis=1) * coverage
         op_and = np.nanprod(op_or)
         
+        # if rule does not cover all dimensions, its firing str
+        # is penalized proportionally to # of uncovered dims.
         return op_and
 
     def to_string(self, input_names=[]):

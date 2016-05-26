@@ -12,7 +12,8 @@ class FuzzyAutoencoder:
     def __init__(self, num_inputs):
         self.num_inputs = num_inputs
         self.rules = []
-        self.nan_replacer = np.nan
+        self.nan_replacer = 0.5
+        self.regularization_coeff = 0.1
         
     def set_partition(self, mfs):
         self.mfs = mfs
@@ -58,17 +59,24 @@ class FuzzyAutoencoder:
         
     def decode(self, y):
         num_samples = y.shape[0]
-        x = np.zeros((num_samples, self.num_inputs))
+        x_hats = np.zeros((num_samples, self.num_inputs))
         for s in range(num_samples):
             code = y[s,:]
-            x_hat = np.zeros(self.num_inputs)
-            for i in range(self.num_rules):                     
-                x_hat += self.rules[i].consequents() * code[i]
-            x_hat /= code.sum()
-            if not np.isnan(self.nan_replacer):
-                x_hat[np.isnan(x_hat)] = self.nan_replacer
-            x[s,:] = x_hat
-        return x
+            xn = np.zeros((self.num_rules, self.num_inputs))
+            xd = np.zeros((self.num_rules, self.num_inputs)) + np.nan
+            for i in range(self.num_rules):
+                c = self.rules[i].consequents()
+                xn[i,:] = c * code[i]
+                xd[i,~np.isnan(c)] = code[i]
+            xn = np.nansum(xn, axis=0)
+            xd = np.nansum(xd, axis=0)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                x_hat = np.true_divide(xn,xd)
+                print x_hat, 'x_h1'
+            x_hat[~np.isfinite(x_hat)] = self.nan_replacer
+            print x_hat, 'x_h2'
+            x_hats[s,:] = x_hat
+        return x_hats
         
     def consequents(self):
         result = np.zeros((self.num_rules, self.num_inputs))
@@ -77,7 +85,9 @@ class FuzzyAutoencoder:
         return result
     
     def loss(self, x, x_prime):
-        return ((x - x_prime)**2).sum() / 2.0
+        error = ((x - x_prime)**2).sum() / 2.0
+        reg = self.get_state().sum() * self.regularization_coeff
+        return error + reg 
         
     def get_state(self):
         state = np.zeros((self.num_rules, self.num_inputs, self.num_mfs))

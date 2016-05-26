@@ -1,7 +1,7 @@
 from sklearn import datasets
 import matplotlib
 import matplotlib.pyplot as plt
-
+import sys
 
 import numpy as np
 from mf import TriangularMF
@@ -37,7 +37,7 @@ encoder.set_partition([
     TriangularMF([0.5, 1, 1.1], 'hi')
 ])
 
-encoder.add_random_rules(3, 0.5)
+encoder.add_random_rules(20, 0.5)
 
 def plot_encoder(x, encoder, title=None):
     y = encoder.encode(x)
@@ -57,11 +57,14 @@ def plot_encoder(x, encoder, title=None):
 
 
 # this is how the random model is doing
-model = encoder.get_state()
+encoder.nan_replacer = 0.5
+encoder.regularization_coeff = 0.1
+y = encoder.encode(x)
+x_hat = encoder.decode(y)
 score = encoder.loss(x, x_hat)
 
 print "initial"
-print model
+print encoder
 print score
 plot_encoder(x, encoder, 'Initial: %f' % score)
 
@@ -84,7 +87,7 @@ def random_search(x, encoder):
     modified_score = encoder.loss(x, x_hat)
     
     if modified_score < score:
-        print score
+        print score, modified_score
         return modified_score
     else:
         encoder.set_state(original)
@@ -100,6 +103,6 @@ for i in range(0, num_iterations):
 plt.plot(history)
 
 print "optimized by random search"
-print model
+print encoder
 print score
 plot_encoder(x, encoder, 'Optimized: %f' % score)
