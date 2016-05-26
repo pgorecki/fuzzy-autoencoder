@@ -57,9 +57,8 @@ print x,y, x_prime, encoder.loss(x, x_prime)
 
 # in this case, none of the rules had fired
 # but we are using nan_replacer
+encoder.nan_replacer = 0.5
 x = np.array([[1,1],[1,1]])
 y = encoder.encode(x)
 x_prime = encoder.decode(y)
 print x,y, x_prime, encoder.loss(x, x_prime)
-
-

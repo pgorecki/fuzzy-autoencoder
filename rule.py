@@ -23,7 +23,6 @@ class CodingRule:
         for i in range(self.weights.shape[0]):
             if self.weights[i,:].sum() == 0:
                 self.weights[i,:] = True
-        print self.weights
         
     def set_or(self, input_idx, value):
         self.weights[input_idx,:] = value

@@ -89,3 +89,4 @@ class FuzzyAutoencoder:
         state = state.reshape((self.num_rules, self.num_inputs, self.num_mfs))
         for i in range(self.num_rules):
             self.rules[i].weights = state[i,:,:]
+            self.rules[i]._sanitize_weights()
